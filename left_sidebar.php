@@ -1,6 +1,6 @@
 <div class="widget">
 	<h3>Website Menu</h3>
-	<?php display_cats(0, 1, 'menu'); ?>
+	<?php display_cats(0, 1, 'menu', 0); ?>
 </div>
 
 <div class="widget">

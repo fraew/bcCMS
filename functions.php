@@ -229,10 +229,6 @@ function truncate_table($table_name)
 
 ###########################################################################################################################
 
-
-
-
-
 ############################################## Login Functions ############################################################
 // Log in function checks session cookie and returns if the user is an admin
 function logged_in()
@@ -324,9 +320,6 @@ function login_submit()
 }
 
 ###########################################################################################################################
-
-
-
 
 ############################################## User Setup Functions #######################################################
 
@@ -655,7 +648,7 @@ function display_comments($post_id)
 	echo '</div>';
 }
 
-function display_cats($parent, $level, $type)
+function display_cats($parent, $level, $type, $selected_cat_id)
 {
 	$sql = 'SELECT a.cat_id, a.cat_name, a.cat_order_id, Deriv1.Count FROM cats a  LEFT OUTER JOIN (SELECT parent_cat_id, COUNT(*) AS Count FROM cats GROUP BY parent_cat_id) Deriv1 ON a.cat_id = Deriv1.parent_cat_id WHERE a.parent_cat_id='.$parent.' ORDER BY a.cat_order_id';
 	$result = sql_select($sql);
@@ -672,13 +665,17 @@ function display_cats($parent, $level, $type)
 				{
 					if ($row['Count'] > 0) 
 					{
-						echo '<option value="'.$cat_id.'">'.$cat_name.'</option>';
-						display_cats($row['cat_id'], $level + 1, 'dropdown');
+						echo '<option value="'.$cat_id.'" ';
+						if($cat_id == $selected_cat_id) { echo 'selected="selected"'; }
+						echo '>'.$cat_name.'</option>';
+						display_cats($row['cat_id'], $level + 1, 'dropdown', $selected_cat_id);
 					} 	
 					elseif ($row['Count']==0) 
 					{
 						if($parent == 0) { $space = ''; } else { $space = '---'; }
-						echo '<option value="'.$cat_id.'">'.$space.$cat_name.'</option>';
+						echo '<option value="'.$cat_id.'" ';
+						if($cat_id == $selected_cat_id) { echo 'selected="selected"'; }
+						echo '>'.$space.$cat_name.'</option>';
 					}
 				}
 			}
@@ -696,7 +693,7 @@ function display_cats($parent, $level, $type)
 					echo '<li><a href="index.php?cat='.$row['cat_id'].'">'.$row['cat_name'].'</a>';
 					if(logged_in() == 'admin') { echo ' [<a href="edit_category.php?cat='.$row['cat_id'].'">edit</a>]'; }
 					echo '</li>';
-					display_cats($row['cat_id'], $level + 1, 'menu');
+					display_cats($row['cat_id'], $level + 1, 'menu', $selected_cat_id);
 					echo '</li>';
 				} 	
 				elseif ($row['Count']==0) 
@@ -709,6 +706,21 @@ function display_cats($parent, $level, $type)
 			echo '</ul>';
 		}
 	}
+}
+
+function comments_form($post_id)
+{
+    echo '<div class="comments-form">';
+		echo '<div class="sub-title">Post your comment</div>';
+		echo '<form action="comment_submit.php?refresh=5" method="post">';
+			echo '<fieldset>';
+				echo '<input type="hidden" id="comment_post_id" name="comment_post_id" value="'.$post_id.'"></input>';
+				echo '<input type="hidden" id="comment_user_id" name="comment_user_id" value="'.$_SESSION['user_id'].'"></input>';
+				echo '<textarea id="comment_content" name="comment_content" style="width:100%;height:100px"></textarea>';
+				echo '<input type="submit" value="Post Comment" />';
+			echo '</fieldset>';
+		echo '</form>';
+	echo '</div>';
 }
 
 function recent_videos($limit)
@@ -792,7 +804,7 @@ function edit_post_form($post_create)
 {
 	if($post_create == false)
 	{
-		$sql = 'SELECT * FROM posts WHERE post_id = '.$_GET['id'];
+		$sql = 'SELECT posts.*, cats.cat_name FROM posts JOIN cats on posts.post_cat_id = cats.cat_id WHERE posts.post_id = '.$_GET['id'];
 		$result = sql_select($sql);
 		if($result)
 		{
@@ -804,10 +816,14 @@ function edit_post_form($post_create)
 				$post_image = $row['post_image'];
 				$post_image_caption = $row['post_image_caption'];
 				$post_cat_id = $row['post_cat_id'];
+				$post_cat_name = $row['cat_name'];
 				$post_status = $row['post_status'];
 			}
 		}
 	}
+	
+	echo 'post_cat_id: '.$post_cat_id.'<br>';
+	
 	echo '<form action="edit_post_submit.php?refresh=10&url=index.php" method="post" enctype="multipart/form-data">';
 	echo '<fieldset>';
 	if($post_create == false) { echo '<input type="hidden" id="post_id" name="post_id" value="'.$_GET['id'].'"></input>'; }
@@ -821,9 +837,9 @@ function edit_post_form($post_create)
 	echo '>Published</option><option value="2" ';
 	if($post_status == 2) { echo 'selected="selected"'; }
 	echo '>Category Only</option></select>'; 
-	echo '<label>Category</label><select id="post_cat_id" name="post_cat_id" value="'.$post_cat_id.'">';
+	echo '<label>Category</label><select id="post_cat_id" name="post_cat_id">';
 
-	display_cats(0,1,'dropdown');
+	display_cats(0,1,'dropdown',$post_cat_id);
 					
 	echo '<label>Content Summary</label><br><textarea id="post_summary" name="post_summary" style="width:100%;height:300px">'.(htmlentities($post_summary)).'</textarea><br>';
 	echo '<label>Content</label><br><textarea id="post_content" name="post_content" style="width:100%;height:300px">'.(htmlentities($post_content)).'</textarea><br>';
@@ -948,6 +964,22 @@ function edit_post_submit()
 		if(sql_update($sql)) { echo 'Deleted post '.$_POST['post_title'].'<br>'; }
 		$sql = 'DELETE FROM tags where post_id = '.$_POST['post_id'];
 		if(sql_update($sql)) { echo 'Deleted tag records for '.$_POST['post_title']; }
+	}
+}
+
+function fix_tags()
+{	
+	$sql = 'SELECT post_id FROM posts WHERE post_status = 1 AND post_video = 0';
+	$result = sql_select($sql);
+	if($result)
+	{
+		$sql = 'DELETE from tags where post_id NOT IN (';
+		while ($row = mysqli_fetch_assoc($result)) 
+		{
+			$sql = $sql.$row['post_id'].', ';
+		}
+		$sql = rtrim($sql, ', ').')';
+		if(sql_update($sql)) { echo 'Non-conforming tags successfully removed.'; }
 	}
 }
 
