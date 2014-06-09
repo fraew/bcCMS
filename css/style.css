@@ -88,7 +88,7 @@ a img { border: none; }
 .right, #social {float: right;  }
 
 .post { margin: 10px 0; clear: both; }
-.post-container  { width: 49%; height: 350px; background: #eee; float: left; margin-bottom: 10px; margin: 0 0.5%; }
+.post-container  { width: 49%; height: 350px; background: #eee; float: left; margin: 0 0.5% 10px 0.5%; }
 .post-summary { background-color: #003; color: #fff; padding: 10px; margin: 10px; opacity:0.8; filter:alpha(opacity=80); line-height: 150%; width: 60%;}
 .post-content { padding: 10px 0; }
 .post-category { text-align: right; padding: 3px; margin-top: 3px; border-top: 1px solid #ddd; }
@@ -122,3 +122,7 @@ a img { border: none; }
 .video-summary { text-align: center; padding: 3px; width: 214px; background: #eee; }
 
 .form-box { padding: 10px; border: 1px solid #ddd; }
+
+.quote { background: #eee; border: 1px solid #ccc; margin: 10px; padding: 10px; width: 50%; }
+
+.insert-image { float: right; width: 33%; clear: right; border: 1px solid #ddd; margin: 10px 0; padding: 5px; }

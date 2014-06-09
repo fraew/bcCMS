@@ -204,7 +204,7 @@ function database_setup()
 	$sql = 'CREATE TABLE if not exists users		( user_id int(11) NOT NULL auto_increment, user_admin binary(1) NOT NULL DEFAULT 0, user_name varchar(20) NOT NULL, user_password char(40) NOT NULL, user_image varchar(255), PRIMARY KEY (user_id), UNIQUE KEY user_name (user_name))';
 	if(sql_update($sql)) { echo 'User Table Created<br>'; }
 
-	$sql = 'CREATE TABLE if not exists posts		( post_id int(11) NOT NULL auto_increment, post_status binary(1) NOT NULL DEFAULT 0, post_video binary(1) NOT NULL DEFAULT 0, post_title varchar(255) NOT NULL, post_date datetime, post_content longtext, post_summary longtext, post_image varchar(255), post_image_caption varchar(255), post_cat_id int(11), PRIMARY KEY (post_id))';
+	$sql = 'CREATE TABLE if not exists posts		( post_id int(11) NOT NULL auto_increment, post_status binary(1) NOT NULL DEFAULT 0, post_video binary(1) NOT NULL DEFAULT 0, post_title varchar(255) NOT NULL, post_date datetime, post_content longtext, post_summary longtext, post_image varchar(255), post_cat_id int(11), PRIMARY KEY (post_id))';
 	if(sql_update($sql)) { echo 'Post Table Created<br>'; }
 
 	$sql = 'CREATE TABLE if not exists cats			( cat_id int(11) NOT NULL auto_increment, cat_name varchar(20) NOT NULL, cat_image varchar(255), cat_summary longtext, parent_cat_id int(11), cat_order_id int(11), PRIMARY KEY (cat_id), UNIQUE KEY cat_name (cat_name))';
@@ -484,7 +484,7 @@ function display_posts($limit)
 		}
 	}
 
-	$sql = 'SELECT posts.post_id, posts.post_title, posts.post_video, posts.post_date, posts.post_date, posts.post_image, posts.post_image_caption, posts.post_summary, posts.post_content, posts.post_status, p.cat_name as parent_cat_name, cats.cat_name FROM posts LEFT JOIN cats on posts.post_cat_id = cats.cat_id LEFT JOIN cats p on cats.parent_cat_id = p.cat_id '.$where.' ORDER BY posts.post_id DESC LIMIT '.$limit;
+	$sql = 'SELECT posts.post_id, posts.post_title, posts.post_video, posts.post_date, posts.post_date, posts.post_image, posts.post_summary, posts.post_content, posts.post_status, p.cat_name as parent_cat_name, cats.cat_name FROM posts LEFT JOIN cats on posts.post_cat_id = cats.cat_id LEFT JOIN cats p on cats.parent_cat_id = p.cat_id '.$where.' ORDER BY posts.post_id DESC LIMIT '.$limit;
 	
 	$result = sql_select($sql);
 	if($result)
@@ -496,7 +496,6 @@ function display_posts($limit)
 			$post_date = $row['post_date'];
 			if($row['post_image'] == ' '){ $image = false; } else { $image = true; }
 			$post_image = $row['post_image'];
-			$post_image_caption = $row['post_image_caption'];
 			$post_summary = $row['post_summary'];
 			$post_content = $row['post_content'];
 			$post_status = $row['post_status'];
@@ -512,11 +511,6 @@ function display_posts($limit)
 					echo '</h3></div>';
 					if($post_status == 1) { echo '<div class="post-date">Posted on: '.$post_date.'</div>'; }
 					echo '<div class="post-content">';
-					if($image == true) 
-					{ 
-						echo '<div class="post-image-left"><a href="images/full/'.$row['post_image'].'" class="highslide" onclick="return hs.expand(this)"><img src="images/250/'.$row['post_image'].'"></a>';
-						echo '<div class="post-image-caption">'.$post_image_caption.'</div></div>'; 
-					}
 					echo $post_content.'</div>';
 					echo '<div class="post-tags"><ul>';
 
@@ -802,6 +796,9 @@ function display_image_library()
 
 function edit_post_form($post_create)
 {
+
+	global $medium_thumb_size;
+
 	if($post_create == false)
 	{
 		$sql = 'SELECT posts.*, cats.cat_name FROM posts JOIN cats on posts.post_cat_id = cats.cat_id WHERE posts.post_id = '.$_GET['id'];
@@ -814,7 +811,6 @@ function edit_post_form($post_create)
 				$post_content = $row['post_content'];
 				$post_summary = $row['post_summary'];
 				$post_image = $row['post_image'];
-				$post_image_caption = $row['post_image_caption'];
 				$post_cat_id = $row['post_cat_id'];
 				$post_cat_name = $row['cat_name'];
 				$post_status = $row['post_status'];
@@ -822,15 +818,13 @@ function edit_post_form($post_create)
 		}
 	}
 	
-	echo 'post_cat_id: '.$post_cat_id.'<br>';
-	
-	echo '<form action="edit_post_submit.php?refresh=10&url=index.php" method="post" enctype="multipart/form-data">';
+	echo '<form name="edit_post" action="edit_post_submit.php?refresh=10&url=index.php" method="post" enctype="multipart/form-data">';
 	echo '<fieldset>';
 	if($post_create == false) { echo '<input type="hidden" id="post_id" name="post_id" value="'.$_GET['id'].'"></input>'; }
 	echo '<input type="hidden" id="post_create" name="post_create" value="'.$post_create.'"></input>';	
 	echo '<input type="hidden" id="post_video" name="post_video" value="0"></input>';
-	echo '<label>Title</label><br><input type="text" id="post_title" name="post_title" style="width:100%" value="'.$post_title.'"></input><br>';
-	echo '<label>Status</label><select id="post_status" name="post_status"><option value="0" ';
+	echo '<label>Title: </label><br><input type="text" id="post_title" name="post_title" style="width:100%" value="'.$post_title.'"></input><br>';
+	echo '<label>Status: </label><select id="post_status" name="post_status"><option value="0" ';
 	if($post_status == 0) { echo 'selected="selected"'; }
 	echo '>Draft</option><option value="1" ';
 	if($post_status == 1) { echo 'selected="selected"'; }
@@ -841,10 +835,11 @@ function edit_post_form($post_create)
 
 	display_cats(0,1,'dropdown',$post_cat_id);
 					
-	echo '<label>Content Summary</label><br><textarea id="post_summary" name="post_summary" style="width:100%;height:300px">'.(htmlentities($post_summary)).'</textarea><br>';
-	echo '<label>Content</label><br><textarea id="post_content" name="post_content" style="width:100%;height:300px">'.(htmlentities($post_content)).'</textarea><br>';
-	
-	echo '<label>Attach Existing Image: </label><select id="post_image" name="post_image"><option value=" "> </option>';
+	echo '<label>Content Summary: </label><br><textarea id="post_summary" name="post_summary" style="width:100%;height:300px">'.(htmlentities($post_summary)).'</textarea><br>';
+
+
+	echo '<div class="insert-image">Insert Image in to Post<br><br>';
+	echo '<label>Select Existing Image: </label><br><select id="insert_image" name="insert_image" style="width:100%;"><option value=" "> </option>';
 	$sql = 'SELECT * from images';
 	$result = sql_select($sql);
 	if($result)
@@ -857,9 +852,30 @@ function edit_post_form($post_create)
 				echo '>'.$image_filename.'</option>';
 			}
 		}
-	echo '</select><br>';
-	echo '<label for="file">Upload New Image: </label><input id="file" type="file" name="file"/></input><br><br>';
-	echo '<label>Image Caption</label><br><input type="text" id="post_image_caption" name="post_image_caption" style="width:100%"value="'.$post_image_caption.'"></input><br>';
+	echo '</select><br><br>';
+	echo '<label>Image Caption: </label><br><input type="text" id="post_image_caption" name="post_image_caption" style="width:100%"></input>';
+	echo '<div class="right"><input type="button" name="add_image" value="Insert Image" onClick="addimage();"></div></div>';
+	
+	
+	echo '<div class="insert-image">Attach Post Image<br><br>';
+	echo '<label>Select Existing Image: </label><br><select id="post_image" name="post_image" style="width:100%;"><option value="'.$post_image.'"> </option>';
+	$sql = 'SELECT * from images';
+	$result = sql_select($sql);
+	if($result)
+		{
+			while ($row = mysqli_fetch_assoc($result)) 
+			{
+				$image_filename = $row['image_filename'];
+				echo '<option value="'.$image_filename.'" ';
+				if($post_image == $image_filename) { echo 'selected="selected"'; }
+				echo '>'.$image_filename.'</option>';
+			}
+		}
+	echo '</select><br><br>';
+	echo '<label>Upload New Image: </label><br><input id="file" type="file" name="file"/></input></div>';
+
+
+	echo '<label>Content: </label><br><textarea id="post_content" name="post_content" style="width:60%;height:300px">'.(htmlentities($post_content)).'</textarea><br>';
 		
 	$sql = 'SELECT * FROM tags where post_id = '.$_GET['id'];
 	$result = sql_select($sql);
@@ -872,11 +888,20 @@ function edit_post_form($post_create)
 		}
 		$post_tags = implode(", ", $post_tag_array);
 	}	
-	echo '<label>Tags</label><br><input type="text" id="post_tags" name="post_tags" style="width:100%"value="'.$post_tags.'"></input><br>';
+	echo '<label>Tags: </label><br><input type="text" id="post_tags" name="post_tags" style="width:100%"value="'.$post_tags.'"></input><br>';
 	echo '<input type="submit" name="edit_button" value="Edit" />';
 	echo '<input type="submit" name="delete_button" value="Delete" />';
 	echo'</fieldset>';
 	echo '</form>';	
+	
+	?>
+	<script language="javascript" type="text/javascript">
+	function addimage() {
+		var newimage = '<div class="post-image-right"><a href="images/full/' + document.edit_post.insert_image.value + '" class="highslide" onclick="return hs.expand(this)"><img src="images/<?php echo $medium_thumb_size; ?>/' + document.edit_post.insert_image.value + '"></a><div class="post-image-caption">' + document.edit_post.post_image_caption.value + '</div></div>';
+		document.edit_post.post_content.value += newimage + "\n";
+	}
+	</script>
+	<?php
 }
 
 function edit_video_form($post_create)
@@ -928,7 +953,9 @@ function edit_post_submit()
 			{
 				$sql = 'INSERT INTO images (image_filename, image_upload_date) VALUES ("'.$image_filename.'", "'.$post_date.'")'; 
 				if(sql_update($sql)) { echo 'Your file ['.$image_filename.'] was uploaded successfully.<br>'; }
-				$post_image = $image_filename;
+				
+				create_thumbnails($image_filename,$medium_thumb_size);
+				create_thumbnails($image_filename,$small_thumb_size);
 			}
 			else
 			{
@@ -940,20 +967,16 @@ function edit_post_submit()
 		{
 			$post_image = $_POST['post_image'];
 		}
-		
-		create_thumbnails($post_image,$medium_thumb_size);
-		create_thumbnails($post_image,$small_thumb_size);
-		
-		$post_image_caption = $_POST['post_image_caption'];
+
 		if($_POST['post_cat_id']) { $post_cat_id = $_POST['post_cat_id']; } else { $post_cat_id = 0; }
 		
 		if($_POST['post_create'] == true)
 		{
-			$sql = 'INSERT INTO posts (post_title, post_date, post_status, post_video, post_summary, post_content, post_image, post_image_caption, post_cat_id) VALUES ("'.$post_title.'", "'.$post_date.'", '.$post_status.', '.$post_video.', "'.$post_summary.'", "'.$post_content.'", "'.$post_image.'", "'.$post_image_caption.'", '.$post_cat_id.')';		
+			$sql = 'INSERT INTO posts (post_title, post_date, post_status, post_video, post_summary, post_content, post_image, post_cat_id) VALUES ("'.$post_title.'", "'.$post_date.'", '.$post_status.', '.$post_video.', "'.$post_summary.'", "'.$post_content.'", "'.$post_image.'", '.$post_cat_id.')';		
 		}
 		else
 		{
-			$sql = 'UPDATE posts set post_title = "'.$post_title.'", post_date = "'.$post_date.'", post_status = '.$post_status.', post_video = '.$post_video.', post_summary = "'.$post_summary.'", post_content = "'.$post_content.'", post_image = "'.$post_image.'", post_image_caption = "'.$post_image_caption.'", post_cat_id = '.$post_cat_id.' where post_id = '.$post_id; 
+			$sql = 'UPDATE posts set post_title = "'.$post_title.'", post_date = "'.$post_date.'", post_status = '.$post_status.', post_video = '.$post_video.', post_summary = "'.$post_summary.'", post_content = "'.$post_content.'", post_image = "'.$post_image.'", post_cat_id = '.$post_cat_id.' where post_id = '.$post_id; 
 		}
 		
 		if(sql_update($sql)) { echo '<h3>Updated "'.$post_title; }
