@@ -7,16 +7,20 @@ if(setup_complete() == false) { database_setup(); echo 'Click <a href="index.php
 
 ?>
 
+	  <div class="container-fluid">
+		<div class="row-fluid">
+          <div class="sidebar-nav left">
+		    <?php recent_videos(); ?>
+		  </div>
 
+          <div class="sidebar-nav right">
+		    <?php popular_tags(); ?>
+		  </div>
 
-<div id="posts">
-	<?php display_posts(10); ?>
-</div>
-
-
-
-<?php 
-
-include('footer.php'); 
-
-?>
+          <div class="content fixed-fixed">
+		    <?php display_posts(); ?>
+		  </div>
+		</div>
+	  </div>
+	  
+<?php include('footer.php'); ?>

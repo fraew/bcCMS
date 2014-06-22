@@ -8,15 +8,6 @@ $user = $ini_array['user'];
 $password = $ini_array['password'];
 $database = $ini_array['database'];
 
-function bootstrap()
-{
-	session_start();
-
-	if($_GET['url']) { $url = $_GET['url']; } else { $url = 'index.php'; }
-	if($_GET['refresh']) { header('refresh:'.$_GET['refresh'].';url='.$url); }
-
-}
-
 //user-defined website settings, stored in the mysql database
 function website_settings()
 {
@@ -40,8 +31,6 @@ function website_settings()
 				case "Videos Limit": $GLOBALS['videos_limit'] = $row['setting_value'];
 				case "Tags Limit": $GLOBALS['tags_limit'] = $row['setting_value'];
 				case "Photos Limit": $GLOBALS['photos_limit'] = $row['setting_value'];
-				case "Analytics ID": $GLOBALS['analytics_id'] = $row['setting_value'];
-				case "Analytics Site Name": $GLOBALS['analytics_site_name'] = $row['setting_value'];
 			}
 		}
 	}
@@ -73,8 +62,6 @@ function site_settings_form()
 			case "Videos Limit": $videos_limit = $row['setting_value'];
 			case "Tags Limit": $tags_limit = $row['setting_value'];
 			case "Photos Limit": $photos_limit = $row['setting_value'];
-			case "Analytics ID": $analytics_id = $row['setting_value'];
-			case "Analytics Site Name": $analytics_site_name = $row['setting_value'];
 		}
 	}
 		
@@ -92,8 +79,6 @@ function site_settings_form()
 			echo '<label for="videos_limit">Videos Limit</label><br><input type="text" id="videos_limit" name="videos_limit" value="'.$videos_limit.'" style="width:50%;" /><br>';
 			echo '<label for="tags_limit">Tags Limit</label><br><input type="text" id="tags_limit" name="tags_limit" value="'.$tags_limit.'" style="width:50%;" /><br>';
 			echo '<label for="photos_limit">Photos Limit</label><br><input type="text" id="photos_limit" name="photos_limit" value="'.$photos_limit.'" style="width:50%;" /><br>';
-			echo '<label for="Analytics ID">Photos Limit</label><br><input type="text" id="analytics_id" name="analytics_id" value="'.$analytics_id.'" style="width:50%;" /><br>';
-			echo '<label for="analytics_site_name">Analytics Site Name</label><br><input type="text" id="analytics_site_name" name="analytics_site_name" value="'.$analytics_site_name.'" style="width:50%;" /><br>';
 			echo '<input type="submit" value="Submit Changes" />';
 		echo '</fieldset>';
 	echo '</form>';
@@ -113,8 +98,6 @@ function site_settings_submit()
 	global $videos_limit;
 	global $tags_limit;
 	global $photos_limit;
-	global $analytics_id;
-	global $analytics_site_name;
 	
 	if($_POST['website_title'] != $website_title) 
 	{ 
@@ -223,24 +206,6 @@ function site_settings_submit()
 			echo 'Photos Limit updated.<br>'; 
 		} 
 	}
-		
-	if($_POST['analytics_id'] != $analytics_id) 
-	{ 
-		$sql = 'UPDATE settings SET setting_value = "'.$_POST['analytics_id'].'" WHERE setting_name = "Analytics ID"'; 
-		if(sql_update($sql)) 
-		{ 
-			echo 'Analytics ID updated.<br>'; 
-		} 
-	}
-		
-	if($_POST['analytics_site_name'] != $analytics_site_name) 
-	{ 
-		$sql = 'UPDATE settings SET setting_value = "'.$_POST['analytics_site_name'].'" WHERE setting_name = "Analytics Site Name"'; 
-		if(sql_update($sql)) 
-		{ 
-			echo 'Analytics Site Name updated.<br>'; 
-		} 
-	}
 }
 
 ###########################################################################################################################
@@ -300,16 +265,12 @@ function database_setup()
 		sql_update($sql);
 		$sql = 'INSERT INTO settings (setting_name, setting_value) VALUES("Photos Limit", "20")';
 		sql_update($sql);
-		$sql = 'INSERT INTO settings (setting_name, setting_value) VALUES("Analytics ID", "UA-83406-7")';
-		sql_update($sql);
-		$sql = 'INSERT INTO settings (setting_name, setting_value) VALUES("Analytics Site Name", "thebigcity.co.nz")';
-		sql_update($sql);
 	}
 
 	$sql = 'CREATE TABLE if not exists users		( user_id int(11) NOT NULL auto_increment, user_admin binary(1) NOT NULL DEFAULT 0, user_name varchar(20) NOT NULL, user_password char(40) NOT NULL, user_image varchar(255), PRIMARY KEY (user_id), UNIQUE KEY user_name (user_name))';
 	if(sql_update($sql)) { echo 'User Table Created<br>'; }
 
-	$sql = 'CREATE TABLE if not exists posts		( post_id int(11) NOT NULL auto_increment, post_status binary(1) NOT NULL DEFAULT 0, post_video binary(1) NOT NULL DEFAULT 0, post_title varchar(255) NOT NULL, post_date datetime, post_content longtext, post_summary longtext, post_image varchar(255), post_video_url varchar(255), post_cat_id int(11), PRIMARY KEY (post_id))';
+	$sql = 'CREATE TABLE if not exists posts		( post_id int(11) NOT NULL auto_increment, post_status binary(1) NOT NULL DEFAULT 0, post_video binary(1) NOT NULL DEFAULT 0, post_title varchar(255) NOT NULL, post_date datetime, post_content longtext, post_summary longtext, post_image varchar(255), post_cat_id int(11), PRIMARY KEY (post_id))';
 	if(sql_update($sql)) { echo 'Post Table Created<br>'; }
 
 	$sql = 'CREATE TABLE if not exists cats			( cat_id int(11) NOT NULL auto_increment, cat_name varchar(20) NOT NULL, cat_image varchar(255), cat_summary longtext, parent_cat_id int(11), cat_order_id int(11), PRIMARY KEY (cat_id), UNIQUE KEY cat_name (cat_name))';
@@ -571,8 +532,9 @@ function display_posts()
 		}
 		elseif($_GET['tag']) 
 		{ 
-			$where = 'JOIN tags on posts.post_id = tags.post_id WHERE tags.tag_name = "'.($_GET['tag']).'" and posts.post_status = 1';  
+			$where = 'JOIN tags on posts.post_id = tags.post_id WHERE tags.tag_name = "'.($_GET['tag']).'" and posts.post_status = 1 and posts.post_video = 0';  
 			$nav = 'tag='.$_GET['tag'];
+			echo '<div class="post-title"><h3>Posts with the Tag: '.($_GET['tag']).'</h3></div>';
 		}
 		elseif($_GET['drafts'] == 'true') 
 		{ 
@@ -590,7 +552,7 @@ function display_posts()
 		}
 	}
 
-	$sql = 'SELECT posts.post_id, posts.post_title, posts.post_video, posts.post_date, posts.post_date, posts.post_image, posts.post_summary, posts.post_content, posts.post_status, posts.post_video_url, p.cat_name as parent_cat_name, cats.cat_name FROM posts LEFT JOIN cats on posts.post_cat_id = cats.cat_id LEFT JOIN cats p on cats.parent_cat_id = p.cat_id '.$where.' ORDER BY posts.post_id DESC LIMIT '.$posts_limit;
+	$sql = 'SELECT posts.post_id, posts.post_title, posts.post_video, posts.post_date, posts.post_date, posts.post_image, posts.post_summary, posts.post_content, posts.post_status, p.cat_name as parent_cat_name, cats.cat_name FROM posts LEFT JOIN cats on posts.post_cat_id = cats.cat_id LEFT JOIN cats p on cats.parent_cat_id = p.cat_id '.$where.' ORDER BY posts.post_id DESC LIMIT '.$posts_limit;
 	
 	$result = sql_select($sql);
 	if($result)
@@ -613,25 +575,10 @@ function display_posts()
 			{
 				echo '<div class="post">';
 					echo '<div class="post-title"><h3><a href="index.php?id='.$post_id.'">'.$post_title.'</a>';
-					if(logged_in() == 'admin') 
-					{
-						if($post_video == 1)
-						{
-							echo ' [<a href="edit_video.php?id='.$post_id.'">edit</a>]'; 
-						}
-						else
-						{
-							echo ' [<a href="edit_post.php?id='.$post_id.'">edit</a>]'; 
-						}
-					} 
+					if(logged_in() == 'admin') { echo ' [<a href="edit_post.php?id='.$post_id.'">edit</a>]'; } 
 					echo '</h3></div>';
 					if($post_status == 1) { echo '<div class="post-date">Posted on: '.$post_date.'</div>'; }
 					echo '<div class="post-content">';
-					if($post_video == 1) 
-					{ 
-						$post_video_url = str_replace('https://', '', str_replace('/watch?v=', '/embed/', $row['post_video_url']));
-						echo '<div class="post-video"><iframe width=640 height=400 src="//'.$post_video_url.'" frameborder="0" allowfullscreen=""></iframe></div>';
-					}
 					echo $post_content.'</div>';
 					echo '<div class="post-tags"><ul>';
 
@@ -641,7 +588,7 @@ function display_posts()
 					{
 						while ($subrow = mysqli_fetch_assoc($subresult)) 
 						{
-							echo '<li class="btn btn-primary btn-sm"><a href="index.php?tag='.$subrow['tag_name'].'">'.$subrow['tag_name'].'</a></li>';
+							echo '<li><a href="index.php?tag='.$subrow['tag_name'].'">'.$subrow['tag_name'].'</a></li>';
 						}
 					}
 					
@@ -649,6 +596,8 @@ function display_posts()
 					echo '<div class="clear"></div>';
 					
 					display_comments($post_id);
+					if(logged_in()) { comments_form($post_id); }
+					echo '<div class="clear"></div>';
 					
 				echo '</div>';
 			}
@@ -668,7 +617,7 @@ function display_posts()
 				{
 					//draft posts - only visible to admins
 					echo '<div class="post" style="background-image:url(images/full/'.$row['post_image'].');background-repeat:no-repeat">';
-					echo '<div class="post-summary"><div class="post-summary-title"><h3>'.$post_title;
+					echo '<div class="post-summary"><div class="post-title"><h3>'.$post_title;
 					if(logged_in() == 'admin') { echo ' [<a href="edit_post.php?id='.$post_id.'">edit</a>]'; } 
 					echo '</h3></div>';
 					echo $post_summary;
@@ -676,13 +625,13 @@ function display_posts()
 				}
 				else
 				{
-					echo '<div class="col-md-6"';
-						if($image == true) { echo 'style=background-image:url(images/full/'.$row['post_image'].');background-repeat:no-repeat;'; }
+					echo '<div class="post-container" ';
+						if($image == true) { echo "style=background-image:url('images/full/'.$row['post_image']."');background-repeat:no-repeat;"; }
 						echo '>';
 						echo '<div class="post-summary">';
-							echo '<div class="post-summary-title"><h3>';
+							echo '<div class="post-title"><h3>';
 							echo '<a href="index.php?id='.$post_id.'">'.$post_title.'</a>';
-								if(logged_in() == 'admin') { echo ' <small>[<a href="edit_post.php?id='.$post_id.'">edit</a>]</small>'; } 
+								if(logged_in() == 'admin') { echo ' [<a href="edit_post.php?id='.$post_id.'">edit</a>]'; } 
 							echo '</h3></div>';
 						echo $post_summary.'<div class="post-category">'.$post_category;
 						if($comment_count > 0) { echo ' | '.$comment_count.' Comment(s)'; }
@@ -734,36 +683,29 @@ function display_posts()
 function display_comments($post_id)
 {
 	global $small_thumb_size;
-	echo '<div class="row">';
-		echo '<div class="col-md-6">';
-			$sql = 'SELECT * from comments JOIN users on comments.comment_user_id = users.user_id WHERE comments.comment_post_id = '.$post_id;
-			$result = sql_select($sql);
-			if($result)
-			{
-				echo '<div class="sub-title">Post Comments ['.mysqli_num_rows($result).']</div>';
-				
-				while ($row = mysqli_fetch_assoc($result)) 
+	echo '<div class="post-comments">';
+		$sql = 'SELECT * from comments JOIN users on comments.comment_user_id = users.user_id WHERE comments.comment_post_id = '.$post_id;
+		$result = sql_select($sql);
+		if($result)
+		{
+			echo '<div class="sub-title">Post Comments ['.mysqli_num_rows($result).']</div>';
+			while ($row = mysqli_fetch_assoc($result)) 
 				{
-					echo '<div class="post-comment">';
-					if($row['user_image'] and $row['user_image'] != ' ') { echo '<div class="small-thumb"><a href="images/full/'.$row['user_image'].'" class="highslide" onclick="return hs.expand(this)"><img src="images/'.$small_thumb_size.'/'.$row['user_image'].'"></a></div>'; }
+				echo '<div class="post-comment">';
+					if($row['user_image'] and $row['user_image'] != ' ') { echo '<div class="tiny-thumb"><a href="images/full/'.$row['user_image'].'" class="highslide" onclick="return hs.expand(this)"><img src="images/'.$small_thumb_size.'/'.$row['user_image'].'"></a></div>'; }
 					echo '<div class="comment-details"><b>Comment by '.$row['user_name'].' on '.$row['comment_date'].'</b></div>';
 					echo '<div class="comment-content">'.$row['comment_content'].'</div>';
 					if(logged_in() == 'admin') 
 					{
 						echo '<div class="right"><form action="delete_comment.php?refresh=5" method="post"><button name="comment_id" type="submit" value="'.$row['comment_id'].'">Delete Comment</button></form></div>';
 					}
-					echo '</div>';
+					echo '<div class="clear"></div>';
+				echo '</div>';
 				}
-			}
-			else
-			{
-				echo '<div class="sub-title">No Comments</div>';
-			}
-		echo '</div>';
-		echo '<div class="col-md-6">';
-		if(logged_in()) 
-		{ 
-			comments_form($post_id); 
+		}
+		else
+		{
+			echo '<div class="sub-title">No Comments</div><div class="clear"></div>';
 		}
 	echo '</div>';
 }
@@ -802,6 +744,7 @@ function display_cats($parent, $level, $type, $selected_cat_id)
 		}
 		if($type == 'menu')
 		{
+			echo '<ul>';
 			while ($row = mysqli_fetch_assoc($result)) 
 			{		
 				$cat_id = $row['cat_id'];
@@ -809,18 +752,20 @@ function display_cats($parent, $level, $type, $selected_cat_id)
 			
 				if ($row['Count'] > 0) 
 				{
-					echo '<li class="dropdown"><a id="drop'.$row['cat_id'].'" role="button" data-toggle="dropdown" href="#">'.$row['cat_name'].' <b class="caret"></b></a>';
-					echo '<ul id="menu'.$row['cat_id'].'" class="dropdown-menu" role="menu" aria-labelledby="drop'.$row['cat_id'].'">';
+					echo '<li><a href="index.php?cat='.$row['cat_id'].'">'.$row['cat_name'].'</a>';
+					if(logged_in() == 'admin') { echo ' [<a href="edit_category.php?cat='.$row['cat_id'].'">edit</a>]'; }
+					echo '</li>';
 					display_cats($row['cat_id'], $level + 1, 'menu', $selected_cat_id);
-					echo '</ul>';
+					echo '</li>';
 				} 	
 				elseif ($row['Count']==0) 
 				{
-					echo '<li role="presentation"';
-					if(($_GET['cat']) == $row['cat_id']) { echo ' class="active" '; }
-					echo'><a role="menuitem" tabindex="-1" href="index.php?cat='.$row['cat_id'].'">'.$row['cat_name'].'</a></li>';
+					echo '<li><a href="index.php?cat='.$row['cat_id'].'">'.$row['cat_name'].'</a>';
+					if(logged_in() == 'admin') { echo ' [<a href="edit_category.php?cat='.$row['cat_id'].'">edit</a>]'; }
+					echo '</li>';
 				}
 			}
+			echo '</ul>';
 		}
 	}
 }
@@ -840,14 +785,6 @@ function comments_form($post_id)
 	echo '</div>';
 }
 
-function comment_submit()
-{
-	date_default_timezone_set('Pacific/Auckland');
-	$comment_date = date('Y-m-d G:i:s');
-	$sql = 'INSERT INTO comments (comment_post_id, comment_user_id, comment_content, comment_date) VALUES ('.$_POST['comment_post_id'].', '.$_POST['comment_user_id'].', "'.$_POST['comment_content'].'", "'.$comment_date.'")';
-	if(sql_update($sql)) { echo 'Comment Added<br>'; }
-}
-
 function recent_videos()
 {
 	GLOBAL $videos_limit;
@@ -859,11 +796,11 @@ function recent_videos()
 	{
 		while ($row = mysqli_fetch_assoc($result)) 
 		{
-			echo '<div class="widget-left">';
-				echo '<div class="title"><a href="index.php?id='.$row['post_id'].'">'.$row['post_title'].'</a>';
-				if(logged_in() == 'admin') { echo ' <small>[<a href="edit_video.php?id='.$row['post_id'].'">Edit</a>]</small>'; }
+			echo '<div class="video">';
+				echo '<div class="video-title">'.$row['post_title'];
+				if(logged_in() == 'admin') { echo ' [<a href="edit_video.php?id='.$row['post_id'].'">Edit</a>]'; }
 				echo '</div>';
-				$post_video_url = str_replace('https://', '', str_replace('/watch?v=', '/embed/', $row['post_video_url']));
+				$post_video_url = str_replace('https://', '', str_replace('/watch?v=', '/embed/', $row['post_image']));
 				echo '<iframe width=220 src="//'.$post_video_url.'" frameborder="0" allowfullscreen=""></iframe>';
 				echo '<div class="video-summary">'.$row['post_summary'].'</div>';
 			echo '</div>';
@@ -880,15 +817,12 @@ function popular_tags()
 	$result = sql_select($sql);
 	if($result)
 	{
-		echo '<div class="widget-right">';
-			echo '<div class="title">Popular Tags</div>';
-			echo '<ul>';
-			while ($row = mysqli_fetch_assoc($result)) 
-			{
-				echo '<li><a href="index.php?tag='.$row['tag_name'].'">'.$row['tag_name'].'</a> <small>['.$row['tag_count'].']</small></li>'; 
-			}
-			echo '</ul>';
-		echo '</div>';
+		echo '<ul>';
+		while ($row = mysqli_fetch_assoc($result)) 
+		{
+			echo '<li><a href="index.php?tag='.$row['tag_name'].'">'.$row['tag_name'].'</a> ['.$row['tag_count'].']</li>'; 
+		}
+		echo '</ul>';
 	}
 }
 
@@ -1011,7 +945,8 @@ function edit_post_form($post_create)
 			}
 		}
 	echo '</select><br><br>';
-	echo '<label>Upload New Image: </label><br><input id="file" type="file" name="file"></input></div>';
+	echo '<label>Upload New Image: </label><br><input id="file" type="file" name="file"/></input></div>';
+
 
 	echo '<label>Content: </label><br><textarea id="post_content" name="post_content" style="width:60%;height:300px">'.(htmlentities($post_content)).'</textarea><br>';
 		
@@ -1053,9 +988,8 @@ function edit_video_form($post_create)
 			while ($row = mysqli_fetch_assoc($result)) 
 			{
 				$post_title = $row['post_title'];
-				$post_video_url = $row['post_video_url'];
+				$post_image = $row['post_image'];
 				$post_summary = $row['post_summary'];
-				$post_content = $row['post_content'];
 				$post_id = $row['post_id'];
 			}
 		}
@@ -1067,23 +1001,8 @@ function edit_video_form($post_create)
 			echo '<input type="hidden" id="post_video" name="post_video" value="1"></input>';
 			echo '<input type="hidden" id="post_status" name="post_status" value="1"></input>';
 			echo '<input type="hidden" id="post_create" name="post_create" value="'.$post_create.'"></input>';
-			echo '<label>Video Embed URL</label><br><input type="text" id="post_video_url" name="post_video_url" style="width:100%" value="'.$post_video_url.'"></input><br>';	
+			echo '<label>Video Embed URL</label><br><input type="text" id="post_image" name="post_image" style="width:100%" value="'.$post_image.'"></input><br>';	
 			echo '<label>Content Summary</label><br><textarea id="post_summary" wrap="hard" name="post_summary" style="width:100%;height:300px">'.$post_summary.'</textarea><br>';
-			echo '<label>Content Content</label><br><textarea id="post_content" wrap="hard" name="post_content" style="width:100%;height:300px">'.$post_content.'</textarea><br>';
-			
-			$sql = 'SELECT * FROM tags where post_id = '.$_GET['id'];
-			$result = sql_select($sql);
-			if($result)
-			{
-				$post_tag_array = array();
-				while($row = mysqli_fetch_array($result)) 
-				{ 
-					array_push($post_tag_array, $row['tag_name']);
-				}
-				$post_tags = implode(", ", $post_tag_array);
-			}	
-			echo '<label>Tags: </label><br><input type="text" id="post_tags" name="post_tags" style="width:100%"value="'.$post_tags.'"></input><br>';			
-					
 			echo '<input type="submit" name="edit_button" value="Edit" />';
 			echo '<input type="submit" name="delete_button" value="Delete" />';
 		echo '</fieldset>';
@@ -1103,7 +1022,6 @@ function edit_post_submit()
 		$post_summary = $_POST['post_summary'];	
 		$post_content = $_POST['post_content'];	
 		$post_video = $_POST['post_video'];
-		$post_video_url = $_POST['post_video_url'];
 
 		date_default_timezone_set('Pacific/Auckland');
 		$post_date = date('Y-m-d G:i:s');
@@ -1114,7 +1032,6 @@ function edit_post_submit()
 			$max_filesize = 10485760;
 			$upload_path = 'images/full/';
 			$image_filename = $_FILES['file']['name'];
-			
 			$ext = substr($image_filename, strpos($image_filename,'.'), strlen($image_filename)-1);
 
 			if(!in_array($ext,$allowed_filetypes)) { die('The file you attempted to upload is not allowed.');} 
@@ -1126,6 +1043,7 @@ function edit_post_submit()
 				if(sql_update($sql)) { echo 'Your file ['.$image_filename.'] was uploaded successfully.<br>'; }
 				
 				$post_image = $image_filename;
+				
 				create_thumbnails($image_filename,$medium_thumb_size);
 				create_thumbnails($image_filename,$small_thumb_size);
 			}
@@ -1145,11 +1063,11 @@ function edit_post_submit()
 		
 		if($_POST['post_create'] == true)
 		{
-			$sql = 'INSERT INTO posts (post_title, post_date, post_status, post_video, post_summary, post_content, post_image, post_video_url, post_cat_id) VALUES ("'.$post_title.'", "'.$post_date.'", '.$post_status.', '.$post_video.', "'.$post_summary.'", "'.$post_content.'", "'.$post_image.'", "'.$post_video_url.'", '.$post_cat_id.')';		
+			$sql = 'INSERT INTO posts (post_title, post_date, post_status, post_video, post_summary, post_content, post_image, post_cat_id) VALUES ("'.$post_title.'", "'.$post_date.'", '.$post_status.', '.$post_video.', "'.$post_summary.'", "'.$post_content.'", "'.$post_image.'", '.$post_cat_id.')';		
 		}
 		else
 		{
-			$sql = 'UPDATE posts set post_title = "'.$post_title.'", post_date = "'.$post_date.'", post_status = '.$post_status.', post_video = '.$post_video.', post_summary = "'.$post_summary.'", post_content = "'.$post_content.'", post_image = "'.$post_image.'", post_video_url = "'.$post_video_url.'", post_cat_id = '.$post_cat_id.' where post_id = '.$post_id; 
+			$sql = 'UPDATE posts set post_title = "'.$post_title.'", post_date = "'.$post_date.'", post_status = '.$post_status.', post_video = '.$post_video.', post_summary = "'.$post_summary.'", post_content = "'.$post_content.'", post_image = "'.$post_image.'", post_cat_id = '.$post_cat_id.' where post_id = '.$post_id; 
 		}
 		
 		if(sql_update($sql)) { echo '<h3>Updated "'.$post_title; }
@@ -1165,7 +1083,7 @@ function edit_post_submit()
 
 function fix_tags()
 {	
-	$sql = 'SELECT post_id FROM posts WHERE post_status = 1';
+	$sql = 'SELECT post_id FROM posts WHERE post_status = 1 AND post_video = 0';
 	$result = sql_select($sql);
 	if($result)
 	{
@@ -1534,41 +1452,23 @@ function social_links()
 	global $instagram_link;
 	global $tumblr_link;
 	
-	if($facebook_link != '') { echo '<li class="no-padding"><a href="'.$facebook_link.'" target="_new"><img src="img/fb.png"></a></li>'; }
-	if($twitter_link != '') { echo '<li class="no-padding"><a href="'.$twitter_link.'" target="_new"><img src="img/twitter.png"></a></li>'; }
-	if($instagram_link != '') { echo '<li class="no-padding"><a href="'.$instagram_link.'" target="_new"><img src="img/instagram.png"></a></li>'; }
-	if($tumblr_link != '') { echo '<li class="no-padding"><a href="'.$tumblr_link.'" target="_new"><img src="img/tumblr.png"></a></li>'; }
+	if($facebook_link != '') { echo '<a href="'.$facebook_link.'" target="_new"><img src="img/fb.png"></a>'; }
+	if($twitter_link != '') { echo '<a href="'.$twitter_link.'" target="_new"><img src="img/twitter.png"></a>'; }
+	if($instagram_link != '') { echo '<a href="'.$instagram_link.'" target="_new"><img src="img/instagram.png"></a>'; }
+	if($tumblr_link != '') { echo '<a href="'.$tumblr_link.'" target="_new"><img src="img/tumblr.png"></a>'; }
 }
 
-function display_navbar()
+function display_footer()
 {
-	if(logged_in() == 'admin' ) 
-	{ 
-		echo '<li class="dropdown"><a id="drop-admin" role="button" data-toggle="dropdown" href="#">Admin Sub-Menu <b class="caret"></b></a>'; 
-		echo '<ul id="menu-admin" class="dropdown-menu" role="menu" aria-labelledby="drop-admin">';
-			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="create_user.php">Create User</a></li>';
-			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="site_settings.php">Edit Site Settings</a></li>';
-			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="truncate_tables.php">Truncate Tables</a></li>';
-		echo '</ul>';
-		echo '<li class="dropdown"><a id="drop-create" role="button" data-toggle="dropdown" href="#">Content Sub-Menu <b class="caret"></b></a>'; 
-		echo '<ul id="menu-admin" class="dropdown-menu" role="menu" aria-labelledby="drop-create">';
-			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="create_post.php">Create Post</a></li>';
-			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="create_video.php">Create Video Post</a></li>';
-			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="upload_image.php">Upload Image</a></li>';
-			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="create_category.php">Create Category</a></li>';
-			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="display_image_library.php">Display Image Library</a></li>';
-			echo '<li role="presentation"><a role="menuitem" tabindex="-1" href="index.php?drafts=true">Display Draft Posts</a></li>';
-		echo '</ul>';
-	} 
-	if(logged_in()) 
-	{ 
-		echo '<li><a href="edit_user.php">Edit your Profile<a></li>';
-		echo '<li><a href="logout.php?refresh=5url=index.php">Log Out</a></li>'; 
-	} 
-	else 
-	{ 
-		echo '<li><a href="login.php">Log In</a></li>'; 
-	}
+
+	echo 'SimpleCMS v0.5 | Copyright Chris Andrews';
+	
+	if(isset($website_title)) { echo ' | '.$website_title; }
+	
+	if(logged_in() == 'admin' ) { echo ' | <a href="admin.php">Admin Sub-Menu<a>'; } 
+	
+	if(logged_in()) { echo ' | <a href="edit_user.php">Edit your Profile<a> | <a href="logout.php?refresh=5">Log Out</a>'; } 
+	else { echo ' | <a href="login.php">Log In</a>'; }
 	
 }
 

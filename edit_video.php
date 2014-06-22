@@ -4,11 +4,11 @@ require('functions.php');
 include('header.php'); 
 
 echo '<div class="container-fluid">';
-echo '<h3>Create Category</h3>';		
+echo '<h3>Edit Video Post</h3>';		
 
 	if(logged_in())
 	{ 
-		edit_category_form(true);
+		edit_video_form(false);
 	}
 	else
 	{
